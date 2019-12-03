@@ -41,14 +41,23 @@ impl Point {
     }
 }
 
-//impl Sub for Point {}
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Segment {
     Up(i32),
     Down(i32),
     Left(i32),
     Right(i32),
+}
+
+impl Segment {
+    pub fn value(&self) -> i32 {
+        match self {
+            Segment::Up(value) => *value,
+            Segment::Down(value) => *value,
+            Segment::Left(value) => *value,
+            Segment::Right(value) => *value,
+        }
+    }
 }
 
 impl From<&str> for Segment {
@@ -69,12 +78,14 @@ impl From<&str> for Segment {
 #[derive(Debug, Clone)]
 pub struct Path {
     pub points: Vec<Point>,
+    pub distances: Vec<i32>,
 }
 
 impl Path {
     fn new() -> Self {
         Path {
             points: vec![Point { x: 0, y: 0 }],
+            distances: vec![0],
         }
     }
 
@@ -109,6 +120,25 @@ impl Path {
         }
         closest_distance
     }
+
+    pub fn find_fewest_combined_steps(&self, other: &Self) -> i32 {
+        let mut fewest_combined_steps = std::i32::MAX;
+        for i_self in 1..self.points.len() - 1 {
+            for i_other in 1..other.points.len() - 1 {
+                let line1 = (&self.points[i_self], &self.points[i_self + 1]);
+                let line2 = (&other.points[i_other], &other.points[i_other + 1]);
+                if let Some(point) = Self::line_intersection(line1, line2) {
+                    println!("Found intersection: {:?}", point);
+                    let steps1 = self.distances[i_self] + point.distance(line1.0);
+                    let steps2 = other.distances[i_other] + point.distance(line2.0);
+                    let combined_steps = steps1 + steps2;
+
+                    fewest_combined_steps = i32::min(fewest_combined_steps, combined_steps);
+                }
+            }
+        }
+        fewest_combined_steps
+    }
 }
 
 impl From<&str> for Path {
@@ -116,11 +146,11 @@ impl From<&str> for Path {
         let mut path = Path::new();
         for s in s.trim().split(',') {
             let segment = Segment::from(s);
-            print!("{:?}, ", segment);
+            let distance = path.distances.last().unwrap() + segment.value();
             let point = path.points.last().unwrap().add_segment(&segment);
             path.points.push(point);
+            path.distances.push(distance);
         }
-        println!();
         path
     }
 }
@@ -135,10 +165,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|line| Path::from(line))
         .collect::<Vec<_>>();
 
-    println!("{:?}", paths);
-
+    // part 1
     let result = paths[0].find_closest_intersection_distance(&paths[1]);
-    println!("result: {}", result);
+    println!("result part1: {}", result);
+
+    // part 2
+    let result = paths[0].find_fewest_combined_steps(&paths[1]);
+    println!("result part2: {}", result);
 
     Ok(())
 }
