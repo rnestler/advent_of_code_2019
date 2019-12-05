@@ -63,7 +63,7 @@ impl Machine {
             }
             // input
             3 => {
-                let out = self.state[self.pc + 3] as usize;
+                let out = self.state[self.pc + 1] as usize;
                 assert!(mode[0] == 0, "wrong mode");
                 self.state[out] = self.input;
                 self.pc += 2;
@@ -75,6 +75,61 @@ impl Machine {
                 self.output = in1;
                 println!("Output: {} at {}", self.output, self.pc);
                 self.pc += 2;
+                None
+            }
+
+            // jump-if-true
+            5 => {
+                let in1 = self.get_param(mode[0], self.state[self.pc + 1]);
+                let in2 = self.get_param(mode[1], self.state[self.pc + 2]);
+                if in1 != 0 {
+                    assert!(in2 >= 0, "address out of range");
+                    self.pc = in2 as usize;
+                } else {
+                    self.pc += 3;
+                }
+                None
+            }
+            // jump-if-false
+            6 => {
+                let in1 = self.get_param(mode[0], self.state[self.pc + 1]);
+                let in2 = self.get_param(mode[1], self.state[self.pc + 2]);
+                if in1 == 0 {
+                    assert!(in2 >= 0, "address out of range");
+                    self.pc = in2 as usize;
+                } else {
+                    self.pc += 3;
+                }
+                //
+                None
+            }
+            // less than
+            7 => {
+                let in1 = self.get_param(mode[0], self.state[self.pc + 1]);
+                let in2 = self.get_param(mode[1], self.state[self.pc + 2]);
+                assert!(mode[2] == 0, "wrong mode");
+                let out = self.state[self.pc + 3] as usize;
+
+                if in1 < in2 {
+                    self.state[out] = 1;
+                } else {
+                    self.state[out] = 0;
+                }
+                self.pc += 4;
+                None
+            }
+            // equals
+            8 => {
+                let in1 = self.get_param(mode[0], self.state[self.pc + 1]);
+                let in2 = self.get_param(mode[1], self.state[self.pc + 2]);
+                assert!(mode[2] == 0, "wrong mode");
+                let out = self.state[self.pc + 3] as usize;
+                if in1 == in2 {
+                    self.state[out] = 1;
+                } else {
+                    self.state[out] = 0;
+                }
+                self.pc += 4;
                 None
             }
             99 => Some(self.state[0]),
@@ -111,11 +166,15 @@ impl Machine {
 fn part_1(code: Vec<i32>) {
     // from the puzzle description
     let mut machine = Machine::new(code);
+    println!("Part 1:");
     let _ = machine.run_with_input(1);
+    println!("");
 }
 
 fn part_2(code: Vec<i32>) {
     let mut machine = Machine::new(code.clone());
+    println!("Part 2:");
+    let _ = machine.run_with_input(5);
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
