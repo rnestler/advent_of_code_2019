@@ -2,32 +2,37 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 
-fn get_total_number_of_orbits(content: &str) -> u32 {
+fn get_orbit_map(content: &str) -> HashMap<&str, Vec<&str>> {
     let mut orbit_map = HashMap::new();
-    let mut orbit_scored_map = HashMap::new();
-    orbit_scored_map.insert("COM", 0u32);
-    let mut total = 0;
     for line in content.lines() {
         let mut line_it = line.split(')');
-        let src = line_it.next().unwrap();
-        let target = line_it.next().unwrap().trim();
+        let mass = line_it.next().unwrap();
+        let orbiter = line_it.next().unwrap().trim();
 
-        let orbitees = orbit_map.entry(src).or_insert(vec![]);
-        orbitees.push(target);
+        let orbiters = orbit_map.entry(mass).or_insert(vec![]);
+        orbiters.push(orbiter);
     }
+    orbit_map
+}
 
+fn get_total_number_of_orbits(content: &str) -> u32 {
+    let orbit_map = get_orbit_map(content);
+    let mut orbit_scored_map = HashMap::new();
+    orbit_scored_map.insert("COM", 0u32);
+
+    let mut total = 0;
     let mut sources: Vec<&str> = vec!["COM"];
     loop {
         let mut next_source = vec![];
-        for src in sources.clone().iter() {
-            let score = *orbit_scored_map.get(src).expect("Not found in map");
-            match orbit_map.get(src) {
+        for mass in sources.clone().iter() {
+            let score = *orbit_scored_map.get(mass).expect("Not found in map");
+            match orbit_map.get(mass) {
                 None => continue,
-                Some(orbitees) => {
-                    for orbitee in orbitees.iter() {
-                        orbit_scored_map.insert(orbitee, score + 1);
+                Some(orbiters) => {
+                    for orbiter in orbiters.iter() {
+                        orbit_scored_map.insert(orbiter, score + 1);
                         total += score + 1;
-                        next_source.push(*orbitee);
+                        next_source.push(*orbiter);
                     }
                 }
             }
