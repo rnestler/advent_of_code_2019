@@ -1,11 +1,13 @@
+use std::collections::VecDeque;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 
+#[derive(Debug, Clone)]
 pub struct Machine {
     pc: usize,
     state: Vec<i32>,
-    input: i32,
+    input: VecDeque<i32>,
     output: i32,
 }
 
@@ -14,7 +16,7 @@ impl Machine {
         Machine {
             pc: 0,
             state,
-            input: 0,
+            input: VecDeque::new(),
             output: 0,
         }
     }
@@ -23,11 +25,14 @@ impl Machine {
         let mut file = File::open(path)?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
-        Ok(contents
-            .trim()
+        Ok(Self::parse_code(&contents))
+    }
+
+    pub fn parse_code(code: &str) -> Vec<i32> {
+        code.trim()
             .split(',')
             .map(|v| i32::from_str_radix(v, 10).expect("No integer"))
-            .collect())
+            .collect()
     }
 
     pub fn get_mode_digits(mut instruction: i32) -> [u8; 3] {
@@ -77,7 +82,7 @@ impl Machine {
             3 => {
                 let out = self.state[self.pc + 1] as usize;
                 assert!(mode[0] == 0, "wrong mode");
-                self.state[out] = self.input;
+                self.state[out] = self.input.pop_front().expect("input empty");
                 self.pc += 2;
                 None
             }
@@ -149,6 +154,14 @@ impl Machine {
         }
     }
 
+    pub fn add_input(&mut self, input: i32) {
+        self.input.push_back(input);
+    }
+
+    pub fn get_output(&self) -> i32 {
+        self.output
+    }
+
     pub fn run(&mut self, noun: i32, verb: i32) -> i32 {
         self.state[1] = noun;
         self.state[2] = verb;
@@ -163,7 +176,7 @@ impl Machine {
     }
 
     pub fn run_with_input(&mut self, input: i32) -> i32 {
-        self.input = input;
+        self.input.push_back(input);
         loop {
             match self.step() {
                 Some(i) => {
