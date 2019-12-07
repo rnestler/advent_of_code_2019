@@ -116,7 +116,6 @@ impl Machine {
             4 => {
                 let in1 = self.get_param(mode[0], self.state[self.pc + 1]);
                 self.output.borrow_mut().push_back(in1);
-                println!("Output: {} at {}", in1, self.pc);
                 self.pc += 2;
                 StepResult::Continue
             }
