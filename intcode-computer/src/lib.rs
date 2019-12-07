@@ -1,14 +1,23 @@
+use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
+use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub struct Machine {
     pc: usize,
     state: Vec<i32>,
-    input: VecDeque<i32>,
-    output: i32,
+    input: Rc<RefCell<VecDeque<i32>>>,
+    output: Rc<RefCell<VecDeque<i32>>>,
+}
+
+pub enum StepResult {
+    Halt(i32),
+    //    Output(i32),
+    NeedsInput,
+    Continue,
 }
 
 impl Machine {
@@ -16,8 +25,21 @@ impl Machine {
         Machine {
             pc: 0,
             state,
-            input: VecDeque::new(),
-            output: 0,
+            input: Rc::new(RefCell::new(VecDeque::new())),
+            output: Rc::new(RefCell::new(VecDeque::new())),
+        }
+    }
+
+    pub fn new_with_in_out(
+        state: Vec<i32>,
+        input: Rc<RefCell<VecDeque<i32>>>,
+        output: Rc<RefCell<VecDeque<i32>>>,
+    ) -> Machine {
+        Machine {
+            pc: 0,
+            state,
+            input,
+            output,
         }
     }
 
@@ -55,7 +77,7 @@ impl Machine {
         }
     }
 
-    pub fn step(&mut self) -> Option<i32> {
+    pub fn step(&mut self) -> StepResult {
         let instruction = self.state[self.pc];
         let op = instruction % 100;
         let mode = Self::get_mode_digits(instruction);
@@ -67,7 +89,7 @@ impl Machine {
                 let out = self.state[self.pc + 3] as usize;
                 self.state[out] = in1 + in2;
                 self.pc += 4;
-                None
+                StepResult::Continue
             }
             2 => {
                 let in1 = self.get_param(mode[0], self.state[self.pc + 1]);
@@ -76,23 +98,27 @@ impl Machine {
                 let out = self.state[self.pc + 3] as usize;
                 self.state[out] = in1 * in2;
                 self.pc += 4;
-                None
+                StepResult::Continue
             }
             // input
             3 => {
-                let out = self.state[self.pc + 1] as usize;
-                assert!(mode[0] == 0, "wrong mode");
-                self.state[out] = self.input.pop_front().expect("input empty");
-                self.pc += 2;
-                None
+                if self.input.borrow().is_empty() {
+                    StepResult::NeedsInput
+                } else {
+                    let out = self.state[self.pc + 1] as usize;
+                    assert!(mode[0] == 0, "wrong mode");
+                    self.state[out] = self.input.borrow_mut().pop_front().expect("input empty");
+                    self.pc += 2;
+                    StepResult::Continue
+                }
             }
             // output
             4 => {
                 let in1 = self.get_param(mode[0], self.state[self.pc + 1]);
-                self.output = in1;
-                println!("Output: {} at {}", self.output, self.pc);
+                self.output.borrow_mut().push_back(in1);
+                println!("Output: {} at {}", in1, self.pc);
                 self.pc += 2;
-                None
+                StepResult::Continue
             }
 
             // jump-if-true
@@ -105,7 +131,7 @@ impl Machine {
                 } else {
                     self.pc += 3;
                 }
-                None
+                StepResult::Continue
             }
             // jump-if-false
             6 => {
@@ -118,7 +144,7 @@ impl Machine {
                     self.pc += 3;
                 }
                 //
-                None
+                StepResult::Continue
             }
             // less than
             7 => {
@@ -133,7 +159,7 @@ impl Machine {
                     self.state[out] = 0;
                 }
                 self.pc += 4;
-                None
+                StepResult::Continue
             }
             // equals
             8 => {
@@ -147,19 +173,22 @@ impl Machine {
                     self.state[out] = 0;
                 }
                 self.pc += 4;
-                None
+                StepResult::Continue
             }
-            99 => Some(self.state[0]),
-            _ => None,
+            99 => StepResult::Halt(self.state[0]),
+            _ => StepResult::Continue,
         }
     }
 
     pub fn add_input(&mut self, input: i32) {
-        self.input.push_back(input);
+        self.input.borrow_mut().push_back(input);
     }
 
     pub fn get_output(&self) -> i32 {
         self.output
+            .borrow_mut()
+            .pop_front()
+            .expect("No output available")
     }
 
     pub fn run(&mut self, noun: i32, verb: i32) -> i32 {
@@ -167,8 +196,11 @@ impl Machine {
         self.state[2] = verb;
         loop {
             match self.step() {
-                Some(i) => {
+                StepResult::Halt(i) => {
                     return i;
+                }
+                StepResult::NeedsInput => {
+                    panic!("Needs input");
                 }
                 _ => {}
             }
@@ -176,12 +208,25 @@ impl Machine {
     }
 
     pub fn run_with_input(&mut self, input: i32) -> i32 {
-        self.input.push_back(input);
+        self.add_input(input);
         loop {
             match self.step() {
-                Some(i) => {
+                StepResult::Halt(i) => {
                     return i;
                 }
+                StepResult::NeedsInput => {
+                    panic!("Needs input");
+                }
+                _ => {}
+            }
+        }
+    }
+
+    pub fn run_until_block(&mut self) -> StepResult {
+        loop {
+            match self.step() {
+                StepResult::Halt(i) => return StepResult::Halt(i),
+                StepResult::NeedsInput => return StepResult::NeedsInput,
                 _ => {}
             }
         }
