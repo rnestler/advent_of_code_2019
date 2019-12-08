@@ -36,6 +36,22 @@ fn count_elems(layer: &Vec<Vec<u8>>, what: u8) -> usize {
         .sum()
 }
 
+fn combine_layers(top: &mut Vec<Vec<u8>>, bottom: &Vec<Vec<u8>>) {
+    for (t_row, b_row) in top.iter_mut().zip(bottom.iter()) {
+        for (t, b) in t_row.iter_mut().zip(b_row.iter()) {
+            *t = if *t == 2 { *b } else { *t }
+        }
+    }
+}
+
+fn stack_layers(layers: &Vec<Vec<Vec<u8>>>, width: usize, height: usize) -> Vec<Vec<u8>> {
+    let mut output = vec![vec![2; width]; height];
+    for layer in layers {
+        combine_layers(&mut output, layer);
+    }
+    output
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let content = read("input.txt")?;
     let layers = create_layers(&content, 25, 6);
@@ -44,6 +60,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let twos = count_elems(layer, 2);
 
     println!("Result day 1: {}", ones * twos);
+
+    let image = stack_layers(&layers, 25, 6);
+
+    for row in &image {
+        for pixel in row {
+            if *pixel == 1 {
+                print!("#");
+            } else {
+                print!(" ");
+            }
+        }
+        println!();
+    }
 
     Ok(())
 }
