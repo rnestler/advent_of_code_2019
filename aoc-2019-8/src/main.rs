@@ -1,10 +1,12 @@
+#![feature(const_generics)]
+
 use std::fs::read;
 use std::io::Read;
 
-fn create_layer(input: &mut &[u8], width: usize, height: usize) -> Vec<Vec<u8>> {
+fn create_layer<const W: usize, const H: usize>(input: &mut &[u8]) -> Vec<Vec<u8>> {
     let mut result = vec![];
-    for _ in 0..height {
-        let mut row = vec![0u8; width];
+    for _ in 0..H {
+        let mut row = vec![0u8; W];
         input.read_exact(&mut row).expect("Reading failed");
         row.iter_mut().for_each(|e| *e -= b'0');
         result.push(row);
@@ -12,12 +14,12 @@ fn create_layer(input: &mut &[u8], width: usize, height: usize) -> Vec<Vec<u8>> 
     result
 }
 
-fn create_layers(mut input: &[u8], width: usize, height: usize) -> Vec<Vec<Vec<u8>>> {
-    let layers = input.len() / (width * height);
+fn create_layers<const W: usize, const H: usize>(mut input: &[u8]) -> Vec<Vec<Vec<u8>>> {
+    let layers = input.len() / (W * H);
     let mut result = vec![]; // create_layer(width, height); layers];
 
     for _ in 0..layers {
-        result.push(create_layer(&mut input, width, height));
+        result.push(create_layer::<W, H>(&mut input));
     }
     result
 }
@@ -54,7 +56,7 @@ fn stack_layers(layers: &Vec<Vec<Vec<u8>>>) -> Vec<Vec<u8>> {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let content = read("input.txt")?;
-    let layers = create_layers(&content, 25, 6);
+    let layers = create_layers::<25, 6>(&content);
     let layer = find_layer_with_fewest_zero(&layers);
     let ones = count_elems(layer, 1);
     let twos = count_elems(layer, 2);
@@ -83,7 +85,7 @@ mod tests {
     #[test]
     fn test_create_layer() {
         let input = b"123456789012";
-        let layer = create_layer(&mut &input[..], 3, 2);
+        let layer = create_layer::<3, 2>(&mut &input[..]);
         let expected = vec![vec![1, 2, 3], vec![4, 5, 6]];
         assert_eq!(expected, layer);
     }
@@ -91,7 +93,7 @@ mod tests {
     #[test]
     fn test_create_layers() {
         let input = b"123456789012";
-        let layers = create_layers(input, 3, 2);
+        let layers = create_layers::<3, 2>(input);
         let expected = vec![
             vec![vec![1, 2, 3], vec![4, 5, 6]],
             vec![vec![7, 8, 9], vec![0, 1, 2]],
@@ -102,7 +104,7 @@ mod tests {
     #[test]
     fn test_find_layer_with_fewest_zero() {
         let input = b"123456789012";
-        let layers = create_layers(input, 3, 2);
+        let layers = create_layers::<3, 2>(input);
         let layer = find_layer_with_fewest_zero(&layers);
         let expected = vec![vec![1, 2, 3], vec![4, 5, 6]];
         assert_eq!(&expected, layer);
