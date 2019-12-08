@@ -1,7 +1,7 @@
 use std::fs::read;
 use std::io::Read;
 
-fn create_layer(mut input: &[u8], width: usize, height: usize) -> Vec<Vec<u8>> {
+fn create_layer(input: &mut &[u8], width: usize, height: usize) -> Vec<Vec<u8>> {
     let mut result = vec![];
     for _ in 0..height {
         let mut row = vec![0u8; width];
@@ -16,8 +16,7 @@ fn create_layers(mut input: &[u8], width: usize, height: usize) -> Vec<Vec<Vec<u
     let mut result = vec![]; // create_layer(width, height); layers];
 
     for _ in 0..layers {
-        result.push(create_layer(input, width, height));
-        input = &input[width * height..];
+        result.push(create_layer(&mut input, width, height));
     }
     result
 }
@@ -54,7 +53,7 @@ mod tests {
     #[test]
     fn test_create_layer() {
         let input = b"123456789012";
-        let layer = create_layer(input, 3, 2);
+        let layer = create_layer(&mut &input[..], 3, 2);
         let expected = vec![vec![b'1', b'2', b'3'], vec![b'4', b'5', b'6']];
         assert_eq!(expected, layer);
     }
