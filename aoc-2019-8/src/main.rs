@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ones = count_elems(layer, 1);
     let twos = count_elems(layer, 2);
 
-    println!("Result day 1: {}", ones * twos);
+    println!("Result part 1: {}", ones * twos);
 
     let image = stack_layers(&layers, 25, 6);
 
