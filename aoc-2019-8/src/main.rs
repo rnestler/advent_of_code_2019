@@ -44,9 +44,9 @@ fn combine_layers(top: &mut Vec<Vec<u8>>, bottom: &Vec<Vec<u8>>) {
     }
 }
 
-fn stack_layers(layers: &Vec<Vec<Vec<u8>>>, width: usize, height: usize) -> Vec<Vec<u8>> {
-    let mut output = vec![vec![2; width]; height];
-    for layer in layers {
+fn stack_layers(layers: &Vec<Vec<Vec<u8>>>) -> Vec<Vec<u8>> {
+    let mut output = layers[0].clone();
+    for layer in &layers[1..] {
         combine_layers(&mut output, layer);
     }
     output
@@ -61,7 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Result part 1: {}", ones * twos);
 
-    let image = stack_layers(&layers, 25, 6);
+    let image = stack_layers(&layers);
 
     for row in &image {
         for pixel in row {
