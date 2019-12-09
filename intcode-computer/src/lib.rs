@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::fs::File;
 use std::io::prelude::*;
@@ -9,6 +10,7 @@ use std::rc::Rc;
 pub struct Machine {
     pc: usize,
     state: Vec<i64>,
+    extended_state: HashMap<u128, i64>,
     relative_base: usize,
     input: Rc<RefCell<VecDeque<i64>>>,
     output: Rc<RefCell<VecDeque<i64>>>,
@@ -25,6 +27,7 @@ impl Machine {
         Machine {
             pc: 0,
             state,
+            extended_state: HashMap::new(),
             relative_base: 0,
             input: Rc::new(RefCell::new(VecDeque::new())),
             output: Rc::new(RefCell::new(VecDeque::new())),
@@ -39,6 +42,7 @@ impl Machine {
         Machine {
             pc: 0,
             state,
+            extended_state: HashMap::new(),
             relative_base: 0,
             input,
             output,
@@ -70,33 +74,44 @@ impl Machine {
     }
 
     pub fn get_param(&self, mode: u8, value: i64) -> i64 {
-        if mode == 0 {
-            *self.state.get(value as usize).unwrap_or(&0)
-        } else if mode == 1 {
-            value
-        } else if mode == 2 {
-            *self
-                .state
-                .get((self.relative_base as i64 + value) as usize)
-                .unwrap_or(&0)
-        } else {
-            panic!("Invalid mode");
+        if mode == 1 {
+            return value;
         }
-    }
-
-    pub fn write_memory(&mut self, mode: u8, location: usize, value: i64) {
         let location = if mode == 0 {
-            location
+            assert!(value >= 0, "negativ address");
+            value as u128
         } else if mode == 2 {
-            location + self.relative_base
+            let location = value as i128 + self.relative_base as i128;
+            assert!(location >= 0, "negativ address");
+            location as u128
         } else {
             panic!("Invalid mode");
         };
 
-        if self.state.len() <= location {
-            self.state.resize(location + 1, 0);
+        if location >= self.state.len() as u128 {
+            *self.extended_state.get(&location).unwrap_or(&0)
+        } else {
+            self.state[location as usize]
         }
-        self.state[location] = value
+    }
+
+    pub fn write_memory(&mut self, mode: u8, location: i64, value: i64) {
+        let location = if mode == 0 {
+            location as i128
+        } else if mode == 2 {
+            location as i128 + self.relative_base as i128
+        } else {
+            panic!("Invalid mode");
+        };
+        assert!(location >= 0, "negativ address");
+        let location = location as u128;
+
+        if self.state.len() as u128 <= location {
+            self.extended_state.insert(location, value);
+        } else {
+            let location = location as usize;
+            self.state[location] = value
+        }
     }
 
     pub fn step(&mut self) -> StepResult {
@@ -107,7 +122,7 @@ impl Machine {
             1 => {
                 let in1 = self.get_param(mode[0], self.state[self.pc + 1]);
                 let in2 = self.get_param(mode[1], self.state[self.pc + 2]);
-                let out = self.state[self.pc + 3] as usize;
+                let out = self.state[self.pc + 3];
                 self.write_memory(mode[2], out, in1 + in2);
                 self.pc += 4;
                 StepResult::Continue
@@ -115,7 +130,7 @@ impl Machine {
             2 => {
                 let in1 = self.get_param(mode[0], self.state[self.pc + 1]);
                 let in2 = self.get_param(mode[1], self.state[self.pc + 2]);
-                let out = self.state[self.pc + 3] as usize;
+                let out = self.state[self.pc + 3];
                 self.write_memory(mode[2], out, in1 * in2);
                 self.pc += 4;
                 StepResult::Continue
@@ -125,7 +140,7 @@ impl Machine {
                 if self.input.borrow().is_empty() {
                     StepResult::NeedsInput
                 } else {
-                    let out = self.state[self.pc + 1] as usize;
+                    let out = self.state[self.pc + 1];
                     let value = self.input.borrow_mut().pop_front().expect("input empty");
                     self.write_memory(mode[0], out, value);
                     self.pc += 2;
@@ -169,7 +184,7 @@ impl Machine {
             7 => {
                 let in1 = self.get_param(mode[0], self.state[self.pc + 1]);
                 let in2 = self.get_param(mode[1], self.state[self.pc + 2]);
-                let out = self.state[self.pc + 3] as usize;
+                let out = self.state[self.pc + 3];
 
                 if in1 < in2 {
                     self.write_memory(mode[2], out, 1);
@@ -183,8 +198,7 @@ impl Machine {
             8 => {
                 let in1 = self.get_param(mode[0], self.state[self.pc + 1]);
                 let in2 = self.get_param(mode[1], self.state[self.pc + 2]);
-                assert!(mode[2] == 0, "wrong mode");
-                let out = self.state[self.pc + 3] as usize;
+                let out = self.state[self.pc + 3];
                 if in1 == in2 {
                     self.write_memory(mode[2], out, 1);
                 } else {
@@ -193,6 +207,7 @@ impl Machine {
                 self.pc += 4;
                 StepResult::Continue
             }
+            // relative base offset
             9 => {
                 let in1 = self.get_param(mode[0], self.state[self.pc + 1]);
                 self.relative_base = (self.relative_base as i64 + in1) as usize;
