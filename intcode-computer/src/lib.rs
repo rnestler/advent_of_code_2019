@@ -127,7 +127,7 @@ impl Machine {
                 } else {
                     let out = self.state[self.pc + 1] as usize;
                     let value = self.input.borrow_mut().pop_front().expect("input empty");
-                    self.write_memory(mode[2], out, value);
+                    self.write_memory(mode[0], out, value);
                     self.pc += 2;
                     StepResult::Continue
                 }
