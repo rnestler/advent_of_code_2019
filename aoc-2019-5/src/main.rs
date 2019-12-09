@@ -3,15 +3,16 @@ use intcode_computer::Machine;
 fn part_1(code: Vec<i64>) {
     // from the puzzle description
     let mut machine = Machine::new(code);
-    println!("Part 1:");
     let _ = machine.run_with_input(1);
-    println!("");
+    let output = machine.drain_output();
+    println!("Part 1: {:?}", output);
 }
 
 fn part_2(code: Vec<i64>) {
     let mut machine = Machine::new(code.clone());
-    println!("Part 2:");
     let _ = machine.run_with_input(5);
+    let output = machine.get_output();
+    println!("Part 2: {}", output);
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
