@@ -8,56 +8,58 @@ use std::rc::Rc;
 #[derive(Debug, Clone)]
 pub struct Machine {
     pc: usize,
-    state: Vec<i32>,
-    input: Rc<RefCell<VecDeque<i32>>>,
-    output: Rc<RefCell<VecDeque<i32>>>,
+    state: Vec<i64>,
+    relative_base: usize,
+    input: Rc<RefCell<VecDeque<i64>>>,
+    output: Rc<RefCell<VecDeque<i64>>>,
 }
 
 pub enum StepResult {
-    Halt(i32),
-    //    Output(i32),
+    Halt(i64),
     NeedsInput,
     Continue,
 }
 
 impl Machine {
-    pub fn new(state: Vec<i32>) -> Machine {
+    pub fn new(state: Vec<i64>) -> Machine {
         Machine {
             pc: 0,
             state,
+            relative_base: 0,
             input: Rc::new(RefCell::new(VecDeque::new())),
             output: Rc::new(RefCell::new(VecDeque::new())),
         }
     }
 
     pub fn new_with_in_out(
-        state: Vec<i32>,
-        input: Rc<RefCell<VecDeque<i32>>>,
-        output: Rc<RefCell<VecDeque<i32>>>,
+        state: Vec<i64>,
+        input: Rc<RefCell<VecDeque<i64>>>,
+        output: Rc<RefCell<VecDeque<i64>>>,
     ) -> Machine {
         Machine {
             pc: 0,
             state,
+            relative_base: 0,
             input,
             output,
         }
     }
 
-    pub fn read_code<P: AsRef<Path>>(path: P) -> Result<Vec<i32>, std::io::Error> {
+    pub fn read_code<P: AsRef<Path>>(path: P) -> Result<Vec<i64>, std::io::Error> {
         let mut file = File::open(path)?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
         Ok(Self::parse_code(&contents))
     }
 
-    pub fn parse_code(code: &str) -> Vec<i32> {
+    pub fn parse_code(code: &str) -> Vec<i64> {
         code.trim()
             .split(',')
-            .map(|v| i32::from_str_radix(v, 10).expect("No integer"))
+            .map(|v| i64::from_str_radix(v, 10).expect("No integer"))
             .collect()
     }
 
-    pub fn get_mode_digits(mut instruction: i32) -> [u8; 3] {
+    pub fn get_mode_digits(mut instruction: i64) -> [u8; 3] {
         instruction /= 100;
         let mut modes = [0u8; 3];
         for d in 0..3 {
@@ -67,14 +69,34 @@ impl Machine {
         modes
     }
 
-    pub fn get_param(&self, mode: u8, value: i32) -> i32 {
+    pub fn get_param(&self, mode: u8, value: i64) -> i64 {
         if mode == 0 {
-            self.state[value as usize]
+            *self.state.get(value as usize).unwrap_or(&0)
         } else if mode == 1 {
             value
+        } else if mode == 2 {
+            *self
+                .state
+                .get((self.relative_base as i64 + value) as usize)
+                .unwrap_or(&0)
         } else {
             panic!("Invalid mode");
         }
+    }
+
+    pub fn write_memory(&mut self, mode: u8, location: usize, value: i64) {
+        let location = if mode == 0 {
+            location
+        } else if mode == 2 {
+            location + self.relative_base
+        } else {
+            panic!("Invalid mode");
+        };
+
+        if self.state.len() <= location {
+            self.state.resize(location + 1, 0);
+        }
+        self.state[location] = value
     }
 
     pub fn step(&mut self) -> StepResult {
@@ -85,18 +107,16 @@ impl Machine {
             1 => {
                 let in1 = self.get_param(mode[0], self.state[self.pc + 1]);
                 let in2 = self.get_param(mode[1], self.state[self.pc + 2]);
-                assert!(mode[2] == 0, "wrong mode");
                 let out = self.state[self.pc + 3] as usize;
-                self.state[out] = in1 + in2;
+                self.write_memory(mode[2], out, in1 + in2);
                 self.pc += 4;
                 StepResult::Continue
             }
             2 => {
                 let in1 = self.get_param(mode[0], self.state[self.pc + 1]);
                 let in2 = self.get_param(mode[1], self.state[self.pc + 2]);
-                assert!(mode[2] == 0, "wrong mode");
                 let out = self.state[self.pc + 3] as usize;
-                self.state[out] = in1 * in2;
+                self.write_memory(mode[2], out, in1 * in2);
                 self.pc += 4;
                 StepResult::Continue
             }
@@ -106,8 +126,8 @@ impl Machine {
                     StepResult::NeedsInput
                 } else {
                     let out = self.state[self.pc + 1] as usize;
-                    assert!(mode[0] == 0, "wrong mode");
-                    self.state[out] = self.input.borrow_mut().pop_front().expect("input empty");
+                    let value = self.input.borrow_mut().pop_front().expect("input empty");
+                    self.write_memory(mode[2], out, value);
                     self.pc += 2;
                     StepResult::Continue
                 }
@@ -149,13 +169,12 @@ impl Machine {
             7 => {
                 let in1 = self.get_param(mode[0], self.state[self.pc + 1]);
                 let in2 = self.get_param(mode[1], self.state[self.pc + 2]);
-                assert!(mode[2] == 0, "wrong mode");
                 let out = self.state[self.pc + 3] as usize;
 
                 if in1 < in2 {
-                    self.state[out] = 1;
+                    self.write_memory(mode[2], out, 1);
                 } else {
-                    self.state[out] = 0;
+                    self.write_memory(mode[2], out, 0);
                 }
                 self.pc += 4;
                 StepResult::Continue
@@ -167,30 +186,42 @@ impl Machine {
                 assert!(mode[2] == 0, "wrong mode");
                 let out = self.state[self.pc + 3] as usize;
                 if in1 == in2 {
-                    self.state[out] = 1;
+                    self.write_memory(mode[2], out, 1);
                 } else {
-                    self.state[out] = 0;
+                    self.write_memory(mode[2], out, 0);
                 }
                 self.pc += 4;
                 StepResult::Continue
             }
+            9 => {
+                let in1 = self.get_param(mode[0], self.state[self.pc + 1]);
+                self.relative_base = (self.relative_base as i64 + in1) as usize;
+                self.pc += 2;
+                StepResult::Continue
+            }
             99 => StepResult::Halt(self.state[0]),
-            _ => StepResult::Continue,
+            opcode => {
+                panic!("Unknown op code: {}", opcode);
+            }
         }
     }
 
-    pub fn add_input(&mut self, input: i32) {
+    pub fn add_input(&mut self, input: i64) {
         self.input.borrow_mut().push_back(input);
     }
 
-    pub fn get_output(&self) -> i32 {
+    pub fn get_output(&self) -> i64 {
         self.output
             .borrow_mut()
             .pop_front()
             .expect("No output available")
     }
 
-    pub fn run(&mut self, noun: i32, verb: i32) -> i32 {
+    pub fn drain_output(&mut self) -> Vec<i64> {
+        self.output.borrow_mut().drain(..).collect()
+    }
+
+    pub fn run(&mut self, noun: i64, verb: i64) -> i64 {
         self.state[1] = noun;
         self.state[2] = verb;
         loop {
@@ -206,7 +237,7 @@ impl Machine {
         }
     }
 
-    pub fn run_with_input(&mut self, input: i32) -> i32 {
+    pub fn run_with_input(&mut self, input: i64) -> i64 {
         self.add_input(input);
         loop {
             match self.step() {
@@ -234,8 +265,34 @@ impl Machine {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn test_day_9_quine() {
+        let input = "109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99";
+        let code = Machine::parse_code(&input);
+        let mut machine = Machine::new(code.clone());
+        let _ = machine.run_with_input(1);
+        let output = machine.drain_output();
+        assert_eq!(output, code);
+    }
+
+    #[test]
+    fn test_day_9_16_digit_number() {
+        let input = "1102,34915192,34915192,7,4,7,99,0";
+        let code = Machine::parse_code(&input);
+        let mut machine = Machine::new(code);
+        let _ = machine.run_with_input(1);
+        let output = machine.get_output();
+        assert_eq!(format!("{}", output).len(), 16);
+    }
+    #[test]
+    fn test_day_9_large_number() {
+        let input = "104,1125899906842624,99";
+        let code = Machine::parse_code(&input);
+        let mut machine = Machine::new(code);
+        let _ = machine.run_with_input(1);
+        let output = machine.get_output();
+        assert_eq!(output, 1125899906842624);
     }
 }
