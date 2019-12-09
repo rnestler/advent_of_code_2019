@@ -1,12 +1,12 @@
 use intcode_computer::Machine;
 
-fn part_1(code: Vec<i32>) {
+fn part_1(code: Vec<i64>) {
     // from the puzzle description
     let mut machine = Machine::new(code);
     println!("result part1: {}", machine.run(12, 2));
 }
 
-fn part_2(code: Vec<i32>) {
+fn part_2(code: Vec<i64>) {
     for noun in 0..100 {
         for verb in 0..100 {
             let mut machine = Machine::new(code.clone());

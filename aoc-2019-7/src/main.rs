@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::rc::Rc;
 
-fn find_max_thruster_signal_with_feedback(code: Vec<i32>) -> i32 {
+fn find_max_thruster_signal_with_feedback(code: Vec<i64>) -> i64 {
     let phases = [5, 6, 7, 8, 9];
     let mut max_output = 0;
     for permutation in permutations_of(&phases) {
@@ -55,7 +55,7 @@ fn find_max_thruster_signal_with_feedback(code: Vec<i32>) -> i32 {
     max_output
 }
 
-fn find_max_thruster_signal(code: Vec<i32>) -> i32 {
+fn find_max_thruster_signal(code: Vec<i64>) -> i64 {
     let phases = [0, 1, 2, 3, 4];
     let mut max_output = 0;
     for permutation in permutations_of(&phases) {

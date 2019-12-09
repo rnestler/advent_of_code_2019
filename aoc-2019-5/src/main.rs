@@ -1,6 +1,6 @@
 use intcode_computer::Machine;
 
-fn part_1(code: Vec<i32>) {
+fn part_1(code: Vec<i64>) {
     // from the puzzle description
     let mut machine = Machine::new(code);
     println!("Part 1:");
@@ -8,7 +8,7 @@ fn part_1(code: Vec<i32>) {
     println!("");
 }
 
-fn part_2(code: Vec<i32>) {
+fn part_2(code: Vec<i64>) {
     let mut machine = Machine::new(code.clone());
     println!("Part 2:");
     let _ = machine.run_with_input(5);
