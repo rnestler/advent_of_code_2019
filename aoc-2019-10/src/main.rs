@@ -100,6 +100,7 @@ fn get_200th_vaporized(asteroids: Vec<Pos>, battle_station: Pos) -> Pos {
             angle_distance: a.get_angle_distance(battle_station),
         })
         .collect();
+    // sort by distance and angle so that we can just loop in circles afterwards
     asteroids.sort_by(|a, b| {
         a.angle_distance
             .distance
@@ -119,6 +120,7 @@ fn get_200th_vaporized(asteroids: Vec<Pos>, battle_station: Pos) -> Pos {
         let asteroids_copy = asteroids.clone();
         let mut to_remove = vec![];
         for (i, a) in asteroids_copy.iter().enumerate() {
+            // move on if angle is the same
             if a.angle_distance.angle == old_angle {
                 continue;
             }
