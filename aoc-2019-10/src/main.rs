@@ -12,16 +12,18 @@ impl Pos {
         Pos { x, y }
     }
 
+    // if the normalized difference is the same, the points lay on a line
     pub fn norm_diff(&self, other: &Self) -> (i32, i32) {
         let diff = Pos {
             x: self.x - other.x,
             y: self.y - other.y,
         };
 
+        // we round to 3 decimal places to avoid precision issues
         let len = ((diff.x * diff.x + diff.y * diff.y) as f64).sqrt();
         (
-            (diff.x as f64 / len * 1000.) as i32,
-            (diff.y as f64 / len * 1000.) as i32,
+            (diff.x as f64 / len * 1000.).round() as i32,
+            (diff.y as f64 / len * 1000.).round() as i32,
         )
     }
 }
