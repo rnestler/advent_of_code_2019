@@ -131,11 +131,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let machine = Machine::new(code.clone());
 
     let mut robot = Robot::new(machine, Color::White);
-    println!("{:?}", robot.panel);
-
     let result = robot.run_part_1();
-    for y in -10..10 {
-        for x in -50..50 {
+
+    let mut min_y = 0;
+    let mut max_y = 0;
+    let mut min_x = 0;
+    let mut max_x = 0;
+    for pos in robot.panel.keys() {
+        min_y = i32::min(min_y, pos.y);
+        min_x = i32::min(min_x, pos.x);
+        max_y = i32::max(max_y, pos.y);
+        max_x = i32::max(max_x, pos.x);
+    }
+
+    println!("result part 2: {}", result);
+    for y in min_y..=max_y {
+        for x in min_x..=max_x {
             let color = robot.panel.get(&Pos::new(x, y)).unwrap_or(&Color::White);
             match color {
                 Color::White => print!("#"),
@@ -144,7 +155,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         println!();
     }
-    println!("result part 2: {}", result);
 
     Ok(())
 }
