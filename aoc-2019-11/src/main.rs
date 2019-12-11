@@ -71,10 +71,10 @@ impl Robot {
     pub fn move_forward(&mut self) {
         match self.direction {
             Direction::Up => {
-                self.position.y += 1;
+                self.position.y -= 1;
             }
             Direction::Down => {
-                self.position.y -= 1;
+                self.position.y += 1;
             }
             Direction::Left => {
                 self.position.x -= 1;
@@ -126,6 +126,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut robot = Robot::new(machine, Color::Black);
 
     let result = robot.run_part_1();
-    println!("result: {}", result);
+    println!("result part 1: {}", result);
+
+    let machine = Machine::new(code.clone());
+
+    let mut robot = Robot::new(machine, Color::White);
+    println!("{:?}", robot.panel);
+
+    let result = robot.run_part_1();
+    for y in -10..10 {
+        for x in -50..50 {
+            let color = robot.panel.get(&Pos::new(x, y)).unwrap_or(&Color::White);
+            match color {
+                Color::White => print!("#"),
+                Color::Black => print!(" "),
+            }
+        }
+        println!();
+    }
+    println!("result part 2: {}", result);
+
     Ok(())
 }
