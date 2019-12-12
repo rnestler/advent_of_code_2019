@@ -56,18 +56,6 @@ fn simulation_step(moons: &mut [Moon]) {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    //let mut file = File::open("input.txt")?;
-    //let mut contents = String::new();
-    //file.read_to_string(&mut contents)?;
-
-    //for line in contents {
-    //}
-
-    //<x=-6, y=-5, z=-8>
-    //<x=0, y=-3, z=-13>
-    //<x=-15, y=10, z=-11>
-    //<x=-3, y=-8, z=3>
-
     let mut moons = [
         Moon::new([-6, -5, -8]),
         Moon::new([0, -3, -13]),
