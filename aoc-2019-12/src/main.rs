@@ -1,6 +1,7 @@
+//use std::collections::HashMap;
 type Vec3 = [i32; 3];
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct Moon {
     pub pos: Vec3,
     pub velocity: Vec3,
@@ -56,20 +57,66 @@ fn simulation_step(moons: &mut [Moon]) {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut moons = [
+    let moons = [
         Moon::new([-6, -5, -8]),
         Moon::new([0, -3, -13]),
         Moon::new([-15, 10, -11]),
         Moon::new([-3, -8, 3]),
     ];
 
+    let mut moons_part_1 = moons.clone();
     for _ in 0..1000 {
-        simulation_step(&mut moons);
+        simulation_step(&mut moons_part_1);
+    }
+    let result: i32 = moons_part_1.iter().map(|v| v.get_total_energy()).sum();
+    println!("result part1: {}", result);
+
+    #[derive(Debug, PartialEq, Eq)]
+    struct State {
+        pos_coordinate: [i32; 4],
+        velocity_coordinate: [i32; 4],
+    };
+
+    impl State {
+        pub fn from_moons(moons: &[Moon; 4], index: usize) -> State {
+            let mut pos_coordinate = [0i32; 4];
+            let mut velocity_coordinate = [0i32; 4];
+            moons.iter().enumerate().for_each(|(i, moon)| {
+                pos_coordinate[i] = moon.pos[index];
+                velocity_coordinate[i] = moon.velocity[index];
+            });
+            State {
+                pos_coordinate,
+                velocity_coordinate,
+            }
+        }
     }
 
-    let result: i32 = moons.iter().map(|v| v.get_total_energy()).sum();
-
-    println!("result part1: {}", result);
+    let mut existing_states_x: Vec<State> = vec![];
+    let mut existing_states_y: Vec<State> = vec![];
+    let mut existing_states_z: Vec<State> = vec![];
+    let mut moons_part_2 = moons;
+    for step in 0.. {
+        simulation_step(&mut moons_part_2);
+        let state_x = State::from_moons(&moons_part_2, 0);
+        let state_y = State::from_moons(&moons_part_2, 1);
+        let state_z = State::from_moons(&moons_part_2, 2);
+        if existing_states_x.contains(&state_x) {
+            println!("X loops at {}", step);
+        } else {
+            existing_states_x.push(state_x);
+        }
+        if existing_states_y.contains(&state_y) {
+            println!("Y loops at {}", step);
+        } else {
+            existing_states_y.push(state_y);
+        }
+        if existing_states_z.contains(&state_z) {
+            println!("Z loops at {}", step);
+        } else {
+            existing_states_z.push(state_z);
+        }
+    }
 
     Ok(())
 }
