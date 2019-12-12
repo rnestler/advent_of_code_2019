@@ -1,13 +1,15 @@
+use num::Integer;
+use std::collections::HashMap;
 type Vec3 = [i32; 3];
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct Moon {
     pub pos: Vec3,
     pub velocity: Vec3,
 }
 
 impl Moon {
-    pub fn new(pos: Vec3) -> Moon {
+    pub const fn new(pos: Vec3) -> Moon {
         Moon {
             pos,
             velocity: [0, 0, 0],
@@ -55,21 +57,89 @@ fn simulation_step(moons: &mut [Moon]) {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+struct State {
+    pos_coordinate: [i32; 4],
+    velocity_coordinate: [i32; 4],
+}
+
+impl State {
+    pub fn from_moons(moons: &[Moon; 4], index: usize) -> State {
+        let mut pos_coordinate = [0i32; 4];
+        let mut velocity_coordinate = [0i32; 4];
+        moons.iter().enumerate().for_each(|(i, moon)| {
+            pos_coordinate[i] = moon.pos[index];
+            velocity_coordinate[i] = moon.velocity[index];
+        });
+        State {
+            pos_coordinate,
+            velocity_coordinate,
+        }
+    }
+}
+
+fn find_loop(mut moons: [Moon; 4]) -> usize {
+    let mut found_x = 0;
+    let mut found_y = 0;
+    let mut found_z = 0;
+    let mut existing_states_x: HashMap<State, usize> = HashMap::new();
+    let mut existing_states_y: HashMap<State, usize> = HashMap::new();
+    let mut existing_states_z: HashMap<State, usize> = HashMap::new();
+    for step in 0.. {
+        simulation_step(&mut moons);
+        if found_x == 0 {
+            let state_x = State::from_moons(&moons, 0);
+            if let Some(pos) = existing_states_x.get(&state_x) {
+                println!("X loops at {}, loops to {}", step, pos);
+                found_x = step;
+            } else {
+                existing_states_x.insert(state_x, step);
+            }
+        }
+
+        if found_y == 0 {
+            let state_y = State::from_moons(&moons, 1);
+            if let Some(pos) = existing_states_y.get(&state_y) {
+                println!("Y loops at {}, loops to {}", step, pos);
+                found_y = step;
+            } else {
+                existing_states_y.insert(state_y, step);
+            }
+        }
+
+        if found_z == 0 {
+            let state_z = State::from_moons(&moons, 2);
+            if let Some(pos) = existing_states_z.get(&state_z) {
+                println!("Z loops at {}, loops to {}", step, pos);
+                found_z = step;
+            } else {
+                existing_states_z.insert(state_z, step);
+            }
+        }
+        if found_x != 0 && found_y != 0 && found_z != 0 {
+            break;
+        }
+    }
+    found_x.lcm(&found_y).lcm(&found_z)
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut moons = [
+    let moons = [
         Moon::new([-6, -5, -8]),
         Moon::new([0, -3, -13]),
         Moon::new([-15, 10, -11]),
         Moon::new([-3, -8, 3]),
     ];
 
+    let mut moons_part_1 = moons.clone();
     for _ in 0..1000 {
-        simulation_step(&mut moons);
+        simulation_step(&mut moons_part_1);
     }
-
-    let result: i32 = moons.iter().map(|v| v.get_total_energy()).sum();
-
+    let result: i32 = moons_part_1.iter().map(|v| v.get_total_energy()).sum();
     println!("result part1: {}", result);
+
+    let result = find_loop(moons);
+    println!("result part2: {}", result);
 
     Ok(())
 }
@@ -77,6 +147,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const MOONS: [Moon; 4] = [
+        Moon::new([-1, 0, 2]),
+        Moon::new([2, -10, -7]),
+        Moon::new([4, -8, 8]),
+        Moon::new([3, 5, -1]),
+    ];
 
     #[test]
     fn test_apply_gravity() {
@@ -95,12 +172,7 @@ mod tests {
 
     #[test]
     fn test_simulation_step() {
-        let mut moons = [
-            Moon::new([-1, 0, 2]),
-            Moon::new([2, -10, -7]),
-            Moon::new([4, -8, 8]),
-            Moon::new([3, 5, -1]),
-        ];
+        let mut moons = MOONS;
         simulation_step(&mut moons);
         assert_eq!(
             moons[0],
@@ -136,5 +208,12 @@ mod tests {
 
         let total_energy: i32 = moons.iter().map(|v| v.get_total_energy()).sum();
         assert_eq!(179, total_energy);
+    }
+
+    #[test]
+    fn test_find_loops() {
+        let moons = MOONS;
+        let result = find_loop(moons);
+        assert_eq!(2772, result);
     }
 }
