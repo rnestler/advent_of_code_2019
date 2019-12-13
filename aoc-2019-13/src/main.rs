@@ -52,22 +52,17 @@ impl Arcade {
         }
     }
 
-    pub fn run(&mut self) {
+    pub fn run_part_1(&mut self) -> usize {
         let _ = self.machine.run_until_block();
         let output = self.machine.drain_output();
         for chunk in output.chunks_exact(3) {
             let pos = Pos::new(chunk[0], chunk[1]);
             let tile = Tile::from(chunk[2]);
-            if tile != Tile::Empty {
-                if tile == Tile::Ball {
-                    println!("ball at {:?}", pos);
-                    self.ball = pos;
-                }
-            }
             if tile == Tile::Block {
                 self.screen.insert(pos, tile);
             }
         }
+        self.screen.keys().count()
     }
 }
 
@@ -75,9 +70,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let code = Machine::read_code("input.txt")?;
     let mut arcade = Arcade::new(Machine::new(code));
 
-    arcade.run();
-
-    let result = arcade.screen.keys().count();
+    let result = arcade.run_part_1();
     println!("result part1: {}", result);
 
     Ok(())
