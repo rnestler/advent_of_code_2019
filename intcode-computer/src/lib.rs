@@ -236,6 +236,10 @@ impl Machine {
         self.output.borrow_mut().drain(..).collect()
     }
 
+    pub fn set_state(&mut self, address: usize, value: i64) {
+        self.state[address] = value;
+    }
+
     pub fn run(&mut self, noun: i64, verb: i64) -> i64 {
         self.state[1] = noun;
         self.state[2] = verb;
