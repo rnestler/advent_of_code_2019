@@ -46,6 +46,7 @@ pub fn reduce_reuired_chemicals<'a>(
             }
         }
     }
+
     *spare_chemicals = new_spare;
 
     spare_chemicals.retain(|_chem, amount| *amount > 0);
@@ -53,13 +54,13 @@ pub fn reduce_reuired_chemicals<'a>(
     new_required_chemicals
 }
 
-pub fn get_number_of_ore(reactions: &Reactions) -> usize {
+pub fn get_number_of_ore(reactions: &Reactions, fuel: usize) -> usize {
     let mut spare_chemicals: HashMap<&str, usize> = HashMap::new();
     let mut required_chemicals: HashMap<&str, usize> = HashMap::new();
     let inputs = reactions.get("FUEL").unwrap();
     for input in inputs.1.iter() {
         let required_input = required_chemicals.entry(&input.1).or_insert(0);
-        *required_input += input.0;
+        *required_input += input.0 * fuel;
     }
 
     loop {
@@ -69,6 +70,29 @@ pub fn get_number_of_ore(reactions: &Reactions) -> usize {
             return *required_chemicals.get("ORE").unwrap();
         }
     }
+}
+
+pub fn get_maximum_fuel_per_trillion_ore(reactions: &Reactions) -> usize {
+    let min_ore = get_number_of_ore(reactions, 1);
+
+    let max_ore = 1_000_000_000_000;
+
+    let mut lower_fuel = 1_000_000_000_000 / min_ore;
+    let mut upper_fuel = lower_fuel * 2;
+
+    let mut max_fuel = lower_fuel;
+
+    while lower_fuel <= upper_fuel {
+        let mid_fuel = (upper_fuel + lower_fuel) / 2;
+        if get_number_of_ore(reactions, mid_fuel) <= max_ore {
+            max_fuel = mid_fuel;
+            lower_fuel = mid_fuel + 1
+        } else {
+            upper_fuel = mid_fuel - 1;
+        }
+    }
+
+    max_fuel
 }
 
 pub fn parse_amount(input: &str) -> Amount {
@@ -104,8 +128,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let reactions = parse_reactions(&contents);
 
-    let result = get_number_of_ore(&reactions);
+    let result = get_number_of_ore(&reactions, 1);
     println!("result part1: {}", result);
+
+    let result = get_maximum_fuel_per_trillion_ore(&reactions);
+    println!("result part2: {}", result);
     Ok(())
 }
 
@@ -190,31 +217,38 @@ mod tests {
     #[test]
     fn test_get_number_of_ore_1() {
         let reactions = parse_reactions(REACTIONS_1);
-        let ore = get_number_of_ore(&reactions);
+        let ore = get_number_of_ore(&reactions, 1);
         assert_eq!(ore, 31);
     }
     #[test]
     fn test_get_number_of_ore_2() {
         let reactions = parse_reactions(REACTIONS_2);
-        let ore = get_number_of_ore(&reactions);
+        let ore = get_number_of_ore(&reactions, 1);
         assert_eq!(ore, 165);
     }
     #[test]
     fn test_get_number_of_ore_3() {
         let reactions = parse_reactions(REACTIONS_3);
-        let ore = get_number_of_ore(&reactions);
+        let ore = get_number_of_ore(&reactions, 1);
         assert_eq!(ore, 13312);
     }
     #[test]
     fn test_get_number_of_ore_4() {
         let reactions = parse_reactions(REACTIONS_4);
-        let ore = get_number_of_ore(&reactions);
+        let ore = get_number_of_ore(&reactions, 1);
         assert_eq!(ore, 180697);
     }
     #[test]
     fn test_get_number_of_ore_5() {
         let reactions = parse_reactions(REACTIONS_5);
-        let ore = get_number_of_ore(&reactions);
+        let ore = get_number_of_ore(&reactions, 1);
         assert_eq!(ore, 2210736);
+    }
+
+    #[test]
+    fn test_fuel_for_max_ore_3() {
+        let reactions = parse_reactions(REACTIONS_3);
+        let fuel = get_maximum_fuel_per_trillion_ore(&reactions);
+        assert_eq!(fuel, 82892753);
     }
 }
