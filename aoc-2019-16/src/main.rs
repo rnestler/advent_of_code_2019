@@ -2,14 +2,18 @@ use std::fs::read;
 const START_PATTERN: &[i8] = &[0, 1, 0, -1];
 
 fn generate_patterns(n: usize) -> Vec<Vec<i8>> {
-    let mut patterns = vec![Vec::from(START_PATTERN)];
+    let mut patterns = vec![];
     patterns.reserve(n);
-    for i in 1..n {
-        let mut next_pattern = vec![];
-        for elem in START_PATTERN.iter() {
-            next_pattern.extend(vec![elem; i + 1]);
-        }
-        patterns.push(next_pattern);
+    for i in 0..n {
+        let pattern: Vec<i8> = START_PATTERN
+            .iter()
+            .flat_map(|d| std::iter::repeat(d).take(i + 1))
+            .cycle()
+            .skip(1)
+            .take(n)
+            .copied()
+            .collect();
+        patterns.push(pattern);
     }
     patterns
 }
@@ -17,7 +21,7 @@ fn generate_patterns(n: usize) -> Vec<Vec<i8>> {
 fn apply_phase(patterns: &Vec<Vec<i8>>, input: &Vec<i8>) -> Vec<i8> {
     let mut output = vec![0i8; input.len()];
     for i in 0..input.len() {
-        let pattern = patterns[i].iter().cycle().skip(1);
+        let pattern = patterns[i].iter().cycle();
         let sum = input
             .iter()
             .zip(pattern)
@@ -37,16 +41,28 @@ fn apply_phases(patterns: &Vec<Vec<i8>>, mut input: Vec<i8>, n: usize) -> Vec<i8
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let content = read("input.txt")?;
-    let content: Vec<i8> = content
+    let input: Vec<i8> = content
         .iter()
         .copied()
         .filter(u8::is_ascii_digit)
         .map(|v| (v - b'0') as i8)
         .collect();
 
-    let patterns = generate_patterns(content.len());
-    let output = apply_phases(&patterns, content, 100);
-    println!("{:?}", &output[0..8]);
+    let patterns = generate_patterns(input.len());
+    let output = apply_phases(&patterns, input, 100);
+    println!("Result part 1: {:?}", &output[0..8]);
+
+    /*
+    let input: Vec<i8> = input
+        .iter()
+        .cycle()
+        .copied()
+        .take(input.len() * 10000)
+        .collect();
+    let patterns = generate_patterns(input.len());
+    */
+    //let output = apply_phases(&patterns, input, 100);
+    //println!("Result part 2: {:?}", &output[0..8]);
 
     Ok(())
 }
@@ -54,6 +70,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn test_generate_patterns() {
+        let patterns = generate_patterns(5);
+        assert_eq!(
+            patterns,
+            vec![
+                vec![1, 0, -1, 0, 1],
+                vec![0, 1, 1, 0, 0],
+                vec![0, 0, 1, 1, 0],
+                vec![0, 0, 0, 1, 1],
+                vec![0, 0, 0, 0, 1],
+            ]
+        );
+    }
+
     #[test]
     fn test_apply_phase() {
         let input = vec![1, 2, 3, 4, 5, 6, 7, 8];
