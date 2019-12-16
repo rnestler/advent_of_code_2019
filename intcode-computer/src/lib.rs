@@ -6,6 +6,18 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::rc::Rc;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Pos {
+    pub x: i64,
+    pub y: i64,
+}
+
+impl Pos {
+    pub const fn new(x: i64, y: i64) -> Self {
+        Pos { x, y }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Machine {
     pc: usize,
