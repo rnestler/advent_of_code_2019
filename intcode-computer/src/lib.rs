@@ -28,6 +28,7 @@ pub struct Machine {
     output: Rc<RefCell<VecDeque<i64>>>,
 }
 
+#[derive(Debug, Clone)]
 pub enum StepResult {
     Halt(i64),
     NeedsInput,
